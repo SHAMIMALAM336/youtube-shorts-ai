@@ -16,11 +16,21 @@ def webhook():
     title = data.get("title", "")
     script = data.get("script", "")
 
+    print("===================================")
     print("Title:", title)
     print("Generating voice...")
+    print("===================================")
 
     try:
+
         create_voice(script)
+
+        # Check if voice.mp3 was created
+        if os.path.exists("voice.mp3"):
+            print("✅ voice.mp3 generated successfully")
+            print("File Size:", os.path.getsize("voice.mp3"), "bytes")
+        else:
+            print("❌ voice.mp3 NOT generated")
 
         return jsonify({
             "success": True,
@@ -30,6 +40,9 @@ def webhook():
         })
 
     except Exception as e:
+
+        print("❌ ERROR:", str(e))
+
         return jsonify({
             "success": False,
             "error": str(e)
