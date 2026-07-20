@@ -1,12 +1,14 @@
-import asyncio
-import edge_tts
-
-async def generate_voice(text, output_file="voice.mp3"):
-    communicate = edge_tts.Communicate(
-        text=text,
-        voice="en-US-AndrewNeural"
-    )
-    await communicate.save(output_file)
+from gtts import gTTS
 
 def create_voice(text):
-    asyncio.run(generate_voice(text))
+    print("Generating voice using gTTS...")
+
+    tts = gTTS(
+        text=text,
+        lang="en",
+        slow=False
+    )
+
+    tts.save("voice.mp3")
+
+    print("✅ voice.mp3 generated successfully")
