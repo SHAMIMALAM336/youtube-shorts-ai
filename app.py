@@ -1,13 +1,14 @@
 from flask import Flask, request, jsonify
 from voice import create_voice
-import os
 from search_video import search_video
+import os
 
 app = Flask(__name__)
 
 @app.route("/")
 def home():
     return "YouTube Shorts AI Backend is Running!"
+
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -24,20 +25,33 @@ def webhook():
 
     try:
 
+        # Generate Voice
         create_voice(script)
 
-        # Check if voice.mp3 was created
         if os.path.exists("voice.mp3"):
             print("✅ voice.mp3 generated successfully")
             print("File Size:", os.path.getsize("voice.mp3"), "bytes")
         else:
             print("❌ voice.mp3 NOT generated")
 
+        # Search & Download Video
+        print("===================================")
+        print("Searching Pexels Video...")
+        print("===================================")
+
+        video = search_video(title)
+
+        if video:
+            print("✅ Video Downloaded:", video)
+        else:
+            print("❌ No Video Found")
+
         return jsonify({
             "success": True,
             "title": title,
-            "status": "Voice Generated",
-            "audio_file": "voice.mp3"
+            "status": "Voice + Video Ready",
+            "audio_file": "voice.mp3",
+            "video_file": video
         })
 
     except Exception as e:
