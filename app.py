@@ -1,6 +1,6 @@
 from merge_video import merge_video
 import subprocess
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from voice import create_voice
 from search_video import search_video
 import os
@@ -19,6 +19,26 @@ def home():
 
     except Exception as e:
         return str(e)
+
+
+# ==============================
+# Download Final Video
+# ==============================
+@app.route("/download/final")
+def download_final():
+
+    if os.path.exists("final.mp4"):
+        return send_file(
+            "final.mp4",
+            mimetype="video/mp4",
+            as_attachment=True,
+            download_name="final.mp4"
+        )
+
+    return jsonify({
+        "success": False,
+        "message": "final.mp4 not found"
+    }), 404
 
 
 @app.route("/webhook", methods=["POST"])
@@ -76,7 +96,8 @@ def webhook():
             "status": "Final Video Ready",
             "audio_file": "voice.mp3",
             "video_file": video,
-            "final_video": "final.mp4"
+            "final_video": "final.mp4",
+            "download_url": request.host_url.rstrip("/") + "/download/final"
         })
 
     except Exception as e:
