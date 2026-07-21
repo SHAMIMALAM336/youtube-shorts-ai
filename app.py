@@ -1,3 +1,4 @@
+import subprocess
 from flask import Flask, request, jsonify
 from voice import create_voice
 from search_video import search_video
@@ -7,7 +8,15 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "YouTube Shorts AI Backend is Running!"
+    try:
+        version = subprocess.check_output(
+            ["ffmpeg", "-version"]
+        ).decode().split("\n")[0]
+
+        return version
+
+    except Exception as e:
+        return str(e)
 
 
 @app.route("/webhook", methods=["POST"])
