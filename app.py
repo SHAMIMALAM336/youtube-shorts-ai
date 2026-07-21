@@ -1,3 +1,4 @@
+from merge_video import merge_video
 import subprocess
 from flask import Flask, request, jsonify
 from voice import create_voice
@@ -5,6 +6,7 @@ from search_video import search_video
 import os
 
 app = Flask(__name__)
+
 
 @app.route("/")
 def home():
@@ -55,12 +57,26 @@ def webhook():
         else:
             print("❌ No Video Found")
 
+        # Merge Video + Voice
+        print("===================================")
+        print("Merging Video + Voice...")
+        print("===================================")
+
+        merge_video()
+
+        if os.path.exists("final.mp4"):
+            print("✅ final.mp4 generated")
+            print("File Size:", os.path.getsize("final.mp4"), "bytes")
+        else:
+            print("❌ final.mp4 NOT generated")
+
         return jsonify({
             "success": True,
             "title": title,
-            "status": "Voice + Video Ready",
+            "status": "Final Video Ready",
             "audio_file": "voice.mp3",
-            "video_file": video
+            "video_file": video,
+            "final_video": "final.mp4"
         })
 
     except Exception as e:
