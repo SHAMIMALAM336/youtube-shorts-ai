@@ -25,20 +25,24 @@ def merge_video(
 
         "-vf",
         (
-            "scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,"
-            "eq=contrast=1.08:brightness=0.03:saturation=1.15"
+            "scale=720:1280:force_original_aspect_ratio=increase,"
+            "crop=720:1280,"
+            "eq=contrast=1.08:brightness=0.03:saturation=1.10"
         ),
 
         "-map", "0:v:0",
         "-map", "1:a:0",
 
         "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-crf", "22",
+        "-preset", "ultrafast",
+        "-crf", "28",
+
+        "-pix_fmt", "yuv420p",
 
         "-c:a", "aac",
-        "-b:a", "192k",
+        "-b:a", "128k",
+
+        "-movflags", "+faststart",
 
         "-shortest",
 
