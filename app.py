@@ -1,8 +1,8 @@
-from merge_video import merge_video
+from merge_pro import merge_video
 import subprocess
 from flask import Flask, request, jsonify, send_file
 from voice import create_voice
-from search_video import search_video
+from download_pexels import download_pexels
 import os
 
 app = Flask(__name__)
@@ -21,9 +21,6 @@ def home():
         return str(e)
 
 
-# ==============================
-# Download Final Video
-# ==============================
 @app.route("/download/final")
 def download_final():
 
@@ -65,21 +62,24 @@ def webhook():
         else:
             print("❌ voice.mp3 NOT generated")
 
-        # Search & Download Video
+        # Download HD Pexels Video
         print("===================================")
-        print("Searching Pexels Video...")
+        print("Downloading Professional Pexels Video...")
         print("===================================")
 
-        video = search_video(title)
+        download_pexels(title)
 
-        if video:
+        video = "video.mp4"
+
+        if os.path.exists(video):
             print("✅ Video Downloaded:", video)
+            print("File Size:", os.path.getsize(video), "bytes")
         else:
-            print("❌ No Video Found")
+            raise Exception("video.mp4 not found")
 
-        # Merge Video + Voice
+        # Merge
         print("===================================")
-        print("Merging Video + Voice...")
+        print("Creating Professional Video...")
         print("===================================")
 
         merge_video()
@@ -88,12 +88,12 @@ def webhook():
             print("✅ final.mp4 generated")
             print("File Size:", os.path.getsize("final.mp4"), "bytes")
         else:
-            print("❌ final.mp4 NOT generated")
+            raise Exception("final.mp4 not generated")
 
         return jsonify({
             "success": True,
             "title": title,
-            "status": "Final Video Ready",
+            "status": "Professional Video Ready",
             "audio_file": "voice.mp3",
             "video_file": video,
             "final_video": "final.mp4",
