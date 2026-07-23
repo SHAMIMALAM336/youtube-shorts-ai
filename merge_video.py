@@ -1,9 +1,12 @@
 import subprocess
 import os
 
-def merge_video(video_file="video.mp4",
-                audio_file="voice.mp3",
-                output_file="final.mp4"):
+
+def merge_video(
+    video_file="video.mp4",
+    audio_file="voice.mp3",
+    output_file="final.mp4"
+):
 
     if not os.path.exists(video_file):
         raise Exception("video.mp4 not found")
@@ -14,11 +17,26 @@ def merge_video(video_file="video.mp4",
     command = [
         "ffmpeg",
         "-y",
+
         "-i", video_file,
         "-i", audio_file,
-        "-c:v", "copy",
+
+        "-vf",
+        "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280",
+
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-crf", "28",
+
+        "-pix_fmt", "yuv420p",
+
         "-c:a", "aac",
+        "-b:a", "128k",
+
+        "-movflags", "+faststart",
+
         "-shortest",
+
         output_file
     ]
 
