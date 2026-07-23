@@ -41,6 +41,13 @@ def download_final():
 @app.route("/webhook", methods=["POST"])
 def webhook():
 
+    # ===============================
+    # Delete old files
+    # ===============================
+    for f in ["voice.mp3", "video.mp4", "final.mp4"]:
+        if os.path.exists(f):
+            os.remove(f)
+
     data = request.get_json(force=True)
 
     title = data.get("title", "")
@@ -48,61 +55,70 @@ def webhook():
 
     print("===================================")
     print("Title:", title)
-    print("Generating voice...")
+    print("Generating Professional Video")
     print("===================================")
 
     try:
 
+        # ===============================
         # Generate Voice
+        # ===============================
         create_voice(script)
 
-        if os.path.exists("voice.mp3"):
-            print("✅ voice.mp3 generated successfully")
-            print("File Size:", os.path.getsize("voice.mp3"), "bytes")
-        else:
-            print("❌ voice.mp3 NOT generated")
+        if not os.path.exists("voice.mp3"):
+            raise Exception("voice.mp3 not generated")
 
-        # Download HD Pexels Video
+        print("✅ Voice Generated")
+        print("Voice Size:", os.path.getsize("voice.mp3"), "bytes")
+
+        # ===============================
+        # Download Pexels Video
+        # ===============================
         print("===================================")
-        print("Downloading Professional Pexels Video...")
+        print("Downloading HD Video...")
         print("===================================")
 
         download_pexels(title)
 
-        video = "video.mp4"
-
-        if os.path.exists(video):
-            print("✅ Video Downloaded:", video)
-            print("File Size:", os.path.getsize(video), "bytes")
-        else:
+        if not os.path.exists("video.mp4"):
             raise Exception("video.mp4 not found")
 
+        print("✅ Video Downloaded")
+        print("Video Size:", os.path.getsize("video.mp4"), "bytes")
+
+        # ===============================
         # Merge
+        # ===============================
         print("===================================")
-        print("Creating Professional Video...")
+        print("Creating Final Video...")
         print("===================================")
 
         merge_video()
 
-        if os.path.exists("final.mp4"):
-            print("✅ final.mp4 generated")
-            print("File Size:", os.path.getsize("final.mp4"), "bytes")
-        else:
+        if not os.path.exists("final.mp4"):
             raise Exception("final.mp4 not generated")
+
+        final_size = os.path.getsize("final.mp4")
+
+        print("✅ Final Video Generated")
+        print("Final Size:", final_size, "bytes")
+
+        if final_size < 500000:
+            raise Exception("final.mp4 corrupted")
 
         return jsonify({
             "success": True,
             "title": title,
             "status": "Professional Video Ready",
-            "audio_file": "voice.mp3",
-            "video_file": video,
-            "final_video": "final.mp4",
             "download_url": request.host_url.rstrip("/") + "/download/final"
         })
 
     except Exception as e:
 
-        print("❌ ERROR:", str(e))
+        print("===================================")
+        print("ERROR")
+        print(str(e))
+        print("===================================")
 
         return jsonify({
             "success": False,
