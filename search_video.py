@@ -3,6 +3,7 @@ import requests
 
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
+
 def search_video(query):
 
     headers = {
@@ -14,24 +15,42 @@ def search_video(query):
         headers=headers,
         params={
             "query": query,
-            "per_page": 1,
+            "per_page": 5,
             "orientation": "portrait"
         }
     )
 
     data = response.json()
 
-    if len(data["videos"]) == 0:
+    if not data.get("videos"):
         return None
 
-    video_url = data["videos"][0]["video_files"][0]["link"]
+    # First video
+    video = data["videos"][0]
+
+    # Choose a smaller file (720p–1080p)
+    selected = None
+
+    for f in video["video_files"]:
+        height = f.get("height", 9999)
+
+        if height <= 1280:
+            selected = f
+            break
+
+    if selected is None:
+        selected = video["video_files"][-1]
+
+    video_url = selected["link"]
 
     print("Downloading:", video_url)
 
-    video = requests.get(video_url)
+    r = requests.get(video_url, stream=True)
 
     with open("video.mp4", "wb") as f:
-        f.write(video.content)
+        for chunk in r.iter_content(1024 * 1024):
+            if chunk:
+                f.write(chunk)
 
     print("✅ video.mp4 downloaded")
 
