@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -18,12 +18,32 @@ jobs:
 
       - name: Install FFmpeg
         run: |
-          sudo apt update
-          sudo apt install ffmpeg -y
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      - name: Install Python packages
+      - name: Install Dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Test FFmpeg
-        run: ffmpeg -version
+      - name: Generate AI Video
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          python generate_video.py
+
+      - name: Show Generated Files
+        if: always()
+        run: |
+          pwd
+          ls -lah
+
+      - name: Upload Final Video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-video
+          path: |
+            final.mp4
+            voice.mp3
+            video.mp4
