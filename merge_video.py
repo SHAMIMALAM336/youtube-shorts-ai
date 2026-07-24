@@ -1,7 +1,6 @@
 import subprocess
 import os
 
-
 def merge_video(
     video_file="video.mp4",
     audio_file="voice.mp3",
@@ -26,12 +25,14 @@ def merge_video(
 
         "-c:v", "libx264",
         "-preset", "ultrafast",
-        "-crf", "28",
+        "-crf", "30",
 
         "-pix_fmt", "yuv420p",
 
+        "-threads", "1",
+
         "-c:a", "aac",
-        "-b:a", "128k",
+        "-b:a", "96k",
 
         "-movflags", "+faststart",
 
