@@ -9,14 +9,12 @@ SEARCH_KEYWORDS = [
     "technology",
     "computer",
     "coding",
-    "data center",
-    "programming",
-    "robot",
-    "startup"
+    "robot"
 ]
 
 
 def clean_keywords(title):
+
     words = re.findall(r"[A-Za-z]+", title.lower())
 
     keywords = []
@@ -33,11 +31,13 @@ def clean_keywords(title):
         if k not in seen:
             seen.append(k)
 
-    return seen[:6]
+    return seen[:3]
 
 
 def best_video(video):
+
     for f in video["video_files"]:
+
         w = f.get("width", 0)
 
         if 720 <= w <= 1080:
@@ -53,7 +53,6 @@ def download_pexels(title):
 
     os.makedirs("clips", exist_ok=True)
 
-    # old clips delete
     for f in os.listdir("clips"):
         os.remove(os.path.join("clips", f))
 
@@ -67,36 +66,49 @@ def download_pexels(title):
 
     for keyword in keywords:
 
-        print("Searching:", keyword)
+        try:
 
-        r = requests.get(
-            "https://api.pexels.com/videos/search",
-            headers=headers,
-            params={
-                "query": keyword,
-                "per_page": 5,
-                "orientation": "portrait"
-            }
-        )
+            print(f"Searching: {keyword}")
 
-        data = r.json()
+            r = requests.get(
+                "https://api.pexels.com/videos/search",
+                headers=headers,
+                params={
+                    "query": keyword,
+                    "per_page": 3,
+                    "orientation": "portrait"
+                },
+                timeout=20
+            )
 
-        if "videos" not in data:
-            continue
+            data = r.json()
 
-        if len(data["videos"]) == 0:
-            continue
+            if "videos" not in data:
+                continue
 
-        url = best_video(data["videos"][0])
+            if len(data["videos"]) == 0:
+                continue
 
-        video = requests.get(url)
+            url = best_video(data["videos"][0])
 
-        with open(f"clips/clip{clip}.mp4", "wb") as f:
-            f.write(video.content)
+            print("Downloading clip...")
 
-        print(f"Downloaded clip{clip}")
+            video = requests.get(
+                url,
+                timeout=60
+            )
 
-        clip += 1
+            with open(f"clips/clip{clip}.mp4", "wb") as f:
+                f.write(video.content)
+
+            print(f"Downloaded clip{clip}")
+
+            clip += 1
+
+        except Exception as e:
+
+            print("Skipped:", keyword)
+            print(str(e))
 
     if clip == 1:
         raise Exception("No clips downloaded")
