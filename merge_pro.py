@@ -1,54 +1,65 @@
 import subprocess
 import os
 
+def merge_video(output="final.mp4"):
 
-def merge_video(
-    video="video.mp4",
-    audio="voice.mp3",
-    output="final.mp4"
-):
-
-    if not os.path.exists(video):
-        raise Exception("video.mp4 not found")
-
-    if not os.path.exists(audio):
+    if not os.path.exists("voice.mp3"):
         raise Exception("voice.mp3 not found")
 
-    command = [
+    clips = sorted([
+        os.path.join("clips", f)
+        for f in os.listdir("clips")
+        if f.endswith(".mp4")
+    ])
+
+    if not clips:
+        raise Exception("No clips found")
+
+    # Create concat list
+    with open("clips.txt", "w", encoding="utf-8") as f:
+        for clip in clips:
+            f.write(f"file '{clip}'\n")
+
+    print("Merging clips...")
+
+    # Re-encode while merging (more reliable than -c copy)
+    subprocess.run([
         "ffmpeg",
         "-y",
-
-        "-stream_loop", "-1",
-        "-i", video,
-
-        "-i", audio,
+        "-f", "concat",
+        "-safe", "0",
+        "-i", "clips.txt",
 
         "-vf",
-        (
-            "scale=720:1280:force_original_aspect_ratio=increase,"
-            "crop=720:1280,"
-            "eq=contrast=1.08:brightness=0.03:saturation=1.10"
-        ),
-
-        "-map", "0:v:0",
-        "-map", "1:a:0",
+        "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30",
 
         "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-crf", "28",
+        "-preset", "medium",
+        "-crf", "20",
 
         "-pix_fmt", "yuv420p",
+
+        "merged.mp4"
+    ], check=True)
+
+    print("Adding voice...")
+
+    subprocess.run([
+        "ffmpeg",
+        "-y",
+        "-i", "merged.mp4",
+        "-i", "voice.mp3",
+
+        "-c:v", "copy",
 
         "-c:a", "aac",
         "-b:a", "128k",
 
-        "-movflags", "+faststart",
-
         "-shortest",
 
-        output
-    ]
+        "-movflags", "+faststart",
 
-    subprocess.run(command, check=True)
+        output
+    ], check=True)
 
     print("✅ Professional Video Created")

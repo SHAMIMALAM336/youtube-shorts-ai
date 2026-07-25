@@ -1,58 +1,104 @@
 import requests
 import os
-import random
+import re
 
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
+SEARCH_KEYWORDS = [
+    "artificial intelligence",
+    "technology",
+    "computer",
+    "coding",
+    "data center",
+    "programming",
+    "robot",
+    "startup"
+]
 
-def download_pexels(query):
+
+def clean_keywords(title):
+    words = re.findall(r"[A-Za-z]+", title.lower())
+
+    keywords = []
+
+    for w in words:
+        if len(w) > 3:
+            keywords.append(w)
+
+    keywords.extend(SEARCH_KEYWORDS)
+
+    seen = []
+
+    for k in keywords:
+        if k not in seen:
+            seen.append(k)
+
+    return seen[:6]
+
+
+def best_video(video):
+    for f in video["video_files"]:
+        w = f.get("width", 0)
+
+        if 720 <= w <= 1080:
+            return f["link"]
+
+    return min(
+        video["video_files"],
+        key=lambda x: x.get("width", 99999)
+    )["link"]
+
+
+def download_pexels(title):
+
+    os.makedirs("clips", exist_ok=True)
+
+    # old clips delete
+    for f in os.listdir("clips"):
+        os.remove(os.path.join("clips", f))
 
     headers = {
         "Authorization": PEXELS_API_KEY
     }
 
-    r = requests.get(
-        "https://api.pexels.com/videos/search",
-        headers=headers,
-        params={
-            "query": query,
-            "per_page": 10,
-            "orientation": "portrait"
-        }
-    )
+    keywords = clean_keywords(title)
 
-    data = r.json()
+    clip = 1
 
-    if "videos" not in data or len(data["videos"]) == 0:
-        raise Exception("No videos found")
+    for keyword in keywords:
 
-    video = random.choice(data["videos"])
+        print("Searching:", keyword)
 
-    # 720p/1080p choose karo (4K avoid)
-    selected = None
-
-    for f in video["video_files"]:
-
-        width = f.get("width", 0)
-
-        if 720 <= width <= 1080:
-            selected = f
-            break
-
-    # Agar na mile to sabse chhoti file le lo
-    if selected is None:
-        selected = min(
-            video["video_files"],
-            key=lambda x: x.get("width", 99999)
+        r = requests.get(
+            "https://api.pexels.com/videos/search",
+            headers=headers,
+            params={
+                "query": keyword,
+                "per_page": 5,
+                "orientation": "portrait"
+            }
         )
 
-    url = selected["link"]
+        data = r.json()
 
-    print("Downloading:", url)
+        if "videos" not in data:
+            continue
 
-    v = requests.get(url)
+        if len(data["videos"]) == 0:
+            continue
 
-    with open("video.mp4", "wb") as f:
-        f.write(v.content)
+        url = best_video(data["videos"][0])
 
-    print("✅ HD Video Downloaded")
+        video = requests.get(url)
+
+        with open(f"clips/clip{clip}.mp4", "wb") as f:
+            f.write(video.content)
+
+        print(f"Downloaded clip{clip}")
+
+        clip += 1
+
+    if clip == 1:
+        raise Exception("No clips downloaded")
+
+    print("All clips downloaded.")
