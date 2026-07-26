@@ -1,58 +1,146 @@
 name: AI Shorts Generator
 
 on:
+  repository_dispatch:
+    types:
+      - generate_video
+
   workflow_dispatch:
+    inputs:
+      title:
+        description: "Video Title"
+        required: true
+        type: string
+
+      script:
+        description: "Video Script"
+        required: true
+        type: string
 
 jobs:
+
   build-video:
+
     runs-on: ubuntu-latest
 
-    # Never allow a stuck video generation to run for hours
     timeout-minutes: 10
 
     steps:
+
+      # ==================================
+      # CHECKOUT
+      # ==================================
+
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+
+      # ==================================
+      # PYTHON
+      # ==================================
+
       - name: Setup Python
         uses: actions/setup-python@v5
+
         with:
           python-version: "3.11"
 
+
+      # ==================================
+      # FFMPEG
+      # ==================================
+
       - name: Install FFmpeg
         run: |
+
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+
           ffmpeg -version
+
+
+      # ==================================
+      # DEPENDENCIES
+      # ==================================
 
       - name: Install Dependencies
         run: |
+
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+
+      # ==================================
+      # GENERATE VIDEO
+      # ==================================
+
       - name: Generate AI Video
+
         env:
+
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
           PYTHONUNBUFFERED: "1"
+
+          VIDEO_TITLE: ${{ github.event.client_payload.title || inputs.title }}
+
+          VIDEO_SCRIPT: ${{ github.event.client_payload.script || inputs.script }}
+
         run: |
-          echo "===== START VIDEO GENERATION ====="
+
+          echo "================================="
+          echo "START VIDEO GENERATION"
+          echo "================================="
+
+          echo "TITLE:"
+          echo "$VIDEO_TITLE"
+
+          echo "SCRIPT:"
+          echo "$VIDEO_SCRIPT"
+
           python -u generate_video.py
-          echo "===== VIDEO GENERATION FINISHED ====="
+
+          echo "================================="
+          echo "VIDEO GENERATION FINISHED"
+          echo "================================="
+
+
+      # ==================================
+      # SHOW FILES
+      # ==================================
 
       - name: Show Generated Files
+
         if: always()
+
         run: |
+
           echo "===== FILES ====="
+
           pwd
-          find . -maxdepth 3 -type f -printf '%p %s bytes\n' | sort
+
+          find . -maxdepth 3 -type f \
+            -printf '%p %s bytes\n' | sort
+
+
+      # ==================================
+      # UPLOAD ARTIFACT
+      # ==================================
 
       - name: Upload Final Video
+
         if: always()
+
         uses: actions/upload-artifact@v4
+
         with:
+
           name: final-video
+
           if-no-files-found: warn
+
           path: |
+
             final.mp4
             voice.mp3
             merged.mp4
