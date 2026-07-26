@@ -7,6 +7,9 @@ jobs:
   build-video:
     runs-on: ubuntu-latest
 
+    # Never allow a stuck video generation to run for hours
+    timeout-minutes: 10
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -20,6 +23,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+          ffmpeg -version
 
       - name: Install Dependencies
         run: |
@@ -29,21 +33,27 @@ jobs:
       - name: Generate AI Video
         env:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PYTHONUNBUFFERED: "1"
         run: |
-          python generate_video.py
+          echo "===== START VIDEO GENERATION ====="
+          python -u generate_video.py
+          echo "===== VIDEO GENERATION FINISHED ====="
 
       - name: Show Generated Files
         if: always()
         run: |
+          echo "===== FILES ====="
           pwd
-          ls -lah
+          find . -maxdepth 3 -type f -printf '%p %s bytes\n' | sort
 
       - name: Upload Final Video
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: final-video
+          if-no-files-found: warn
           path: |
             final.mp4
             voice.mp3
-            video.mp4
+            merged.mp4
+            clips/*.mp4
