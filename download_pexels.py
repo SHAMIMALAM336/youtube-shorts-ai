@@ -6,50 +6,73 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
 SEARCH_KEYWORDS = [
     "artificial intelligence",
-    "technology",
+    "ai technology",
+    "robot",
     "computer",
+    "software",
     "coding",
-    "robot"
+    "technology",
+    "startup",
+    "business",
+    "future"
 ]
 
+STOP_WORDS = {
+    "this","that","with","have","will","they","them","their","from",
+    "into","your","about","after","before","there","would","could",
+    "should","just","than","then","what","when","where","which",
+    "because","while","every","today","yesterday","tomorrow","video",
+    "shorts","follow","subscribe","comment","share","watch"
+}
 
-def clean_keywords(title):
 
-    words = re.findall(r"[A-Za-z]+", title.lower())
+def clean_keywords(script):
+
+    words = re.findall(r"[A-Za-z]+", script.lower())
 
     keywords = []
 
-    for w in words:
-        if len(w) > 3:
-            keywords.append(w)
+    for word in words:
+
+        if len(word) < 4:
+            continue
+
+        if word in STOP_WORDS:
+            continue
+
+        if word not in keywords:
+            keywords.append(word)
 
     keywords.extend(SEARCH_KEYWORDS)
 
-    seen = []
+    unique = []
 
     for k in keywords:
-        if k not in seen:
-            seen.append(k)
+        if k not in unique:
+            unique.append(k)
 
-    return seen[:3]
+    return unique[:8]
 
 
 def best_video(video):
 
-    for f in video["video_files"]:
+    files = sorted(
+        video["video_files"],
+        key=lambda x: x.get("width", 0),
+        reverse=True
+    )
+
+    for f in files:
 
         w = f.get("width", 0)
 
         if 720 <= w <= 1080:
             return f["link"]
 
-    return min(
-        video["video_files"],
-        key=lambda x: x.get("width", 99999)
-    )["link"]
+    return files[0]["link"]
 
 
-def download_pexels(title):
+def download_pexels(script):
 
     os.makedirs("clips", exist_ok=True)
 
@@ -60,23 +83,33 @@ def download_pexels(title):
         "Authorization": PEXELS_API_KEY
     }
 
-    keywords = clean_keywords(title)
+    keywords = clean_keywords(script)
+
+    print("=" * 40)
+    print("SEARCH KEYWORDS")
+    print("=" * 40)
+
+    for k in keywords:
+        print(k)
 
     clip = 1
+
+    downloaded = set()
 
     for keyword in keywords:
 
         try:
 
-            print(f"Searching: {keyword}")
+            print(f"\nSearching: {keyword}")
 
             r = requests.get(
                 "https://api.pexels.com/videos/search",
                 headers=headers,
                 params={
                     "query": keyword,
-                    "per_page": 3,
-                    "orientation": "portrait"
+                    "per_page": 8,
+                    "orientation": "portrait",
+                    "size": "medium"
                 },
                 timeout=20
             )
@@ -89,12 +122,29 @@ def download_pexels(title):
             if len(data["videos"]) == 0:
                 continue
 
-            url = best_video(data["videos"][0])
+            videos = sorted(
+                data["videos"],
+                key=lambda v: v.get("duration", 999)
+            )
+
+            selected = None
+
+            for video in videos:
+
+                url = best_video(video)
+
+                if url not in downloaded:
+                    downloaded.add(url)
+                    selected = url
+                    break
+
+            if selected is None:
+                continue
 
             print("Downloading clip...")
 
             video = requests.get(
-                url,
+                selected,
                 timeout=60
             )
 
@@ -113,4 +163,6 @@ def download_pexels(title):
     if clip == 1:
         raise Exception("No clips downloaded")
 
-    print("All clips downloaded.")
+    print("=" * 40)
+    print(f"Downloaded {clip-1} clips")
+    print("=" * 40)
