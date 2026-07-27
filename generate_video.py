@@ -14,13 +14,11 @@ from merge_pro import merge_video
 title = os.getenv("VIDEO_TITLE")
 script = os.getenv("VIDEO_SCRIPT")
 
-
 if not title or not script:
     raise Exception(
         "VIDEO_TITLE or VIDEO_SCRIPT missing. "
         "GitHub Actions did not receive the new topic."
     )
-
 
 print("=================================", flush=True)
 print("NEW VIDEO DATA", flush=True)
@@ -77,7 +75,10 @@ print("=================================", flush=True)
 print("=== 2. DOWNLOADING CLIPS ===", flush=True)
 print("=================================", flush=True)
 
-download_pexels(title)
+# IMPORTANT:
+# Use full script instead of only title
+# This improves keyword extraction for visuals
+download_pexels(script)
 
 
 # ==========================================
@@ -106,12 +107,10 @@ print(
     flush=True
 )
 
-
 if size < 100000:
     raise Exception(
         "final.mp4 appears too small/corrupt"
     )
-
 
 print("=================================", flush=True)
 print("=== SUCCESS ===", flush=True)
