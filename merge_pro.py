@@ -1,158 +1,115 @@
 import subprocess
 import os
 import glob
+import json
 
 
-def run_ffmpeg(command):
-    print("Running FFmpeg...", flush=True)
-
-    subprocess.run(
-        command,
-        check=True,
-        timeout=180
-    )
+def run(cmd):
+    subprocess.run(cmd, check=True)
 
 
-def merge_video(output="final.mp4"):
+def get_audio_duration(audio):
+    result = subprocess.check_output([
+        "ffprobe",
+        "-v","error",
+        "-show_entries","format=duration",
+        "-of","json",
+        audio
+    ])
+
+    data=json.loads(result)
+
+    return float(data["format"]["duration"])
+
+
+def get_video_duration(video):
+    result=subprocess.check_output([
+        "ffprobe",
+        "-v","error",
+        "-show_entries","format=duration",
+        "-of","json",
+        video
+    ])
+
+    data=json.loads(result)
+
+    return float(data["format"]["duration"])
+
+
+def merge_video():
 
     if not os.path.exists("voice.mp3"):
-        raise Exception("voice.mp3 not found")
+        raise Exception("voice.mp3 missing")
 
-    clips = sorted(glob.glob("clips/*.mp4"))
+    audio_length=get_audio_duration("voice.mp3")
 
-    if not clips:
-        raise Exception("No clips found")
+    clips=sorted(glob.glob("clips/*.mp4"))
 
-    print(f"Found {len(clips)} clips", flush=True)
+    if len(clips)==0:
+        raise Exception("No clips downloaded")
 
-    # ---------------------------------
-    # STEP 1: Normalize every clip
-    # ---------------------------------
+    os.makedirs("normalized",exist_ok=True)
 
-    os.makedirs("normalized", exist_ok=True)
+    for f in glob.glob("normalized/*.mp4"):
+        os.remove(f)
 
-    for f in os.listdir("normalized"):
-        path = os.path.join("normalized", f)
-        if os.path.isfile(path):
-            os.remove(path)
+    normalized=[]
 
-    normalized = []
+    current=0
 
-    for i, clip in enumerate(clips, start=1):
+    index=1
 
-        out = f"normalized/clip{i}.mp4"
+    while current<audio_length:
 
-        print(f"Normalizing clip {i}: {clip}", flush=True)
+        clip=clips[(index-1)%len(clips)]
 
-        run_ffmpeg([
+        out=f"normalized/clip{index}.mp4"
+
+        run([
             "ffmpeg",
             "-y",
-            "-i", clip,
-
+            "-i",clip,
             "-an",
-
-            "-vf",
-            (
-                "scale=720:1280:"
-                "force_original_aspect_ratio=increase,"
-                "crop=720:1280,"
-                "fps=30,"
-                "format=yuv420p"
-            ),
-
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "28",
-
-            "-r", "30",
-            "-pix_fmt", "yuv420p",
-
-            "-movflags", "+faststart",
-
+            "-vf","scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30",
+            "-pix_fmt","yuv420p",
+            "-c:v","libx264",
             out
         ])
 
         normalized.append(out)
 
-    # ---------------------------------
-    # STEP 2: Create concat list
-    # ---------------------------------
+        current+=get_video_duration(out)
 
-    with open("clips.txt", "w", encoding="utf-8") as f:
+        index+=1
 
-        for clip in normalized:
-            absolute_path = os.path.abspath(clip).replace("\\", "/")
-            f.write(f"file '{absolute_path}'\n")
 
-    print("Normalized clips ready.", flush=True)
+    with open("clips.txt","w") as f:
+        for c in normalized:
+            f.write(f"file '{os.path.abspath(c)}'\n")
 
-    # ---------------------------------
-    # STEP 3: Merge normalized clips
-    # ---------------------------------
 
-    if os.path.exists("merged.mp4"):
-        os.remove("merged.mp4")
-
-    print("Merging normalized clips...", flush=True)
-
-    run_ffmpeg([
+    run([
         "ffmpeg",
         "-y",
-
-        "-f", "concat",
-        "-safe", "0",
-
-        "-i", "clips.txt",
-
-        "-c", "copy",
-
-        "-movflags", "+faststart",
-
+        "-f","concat",
+        "-safe","0",
+        "-i","clips.txt",
+        "-c","copy",
         "merged.mp4"
     ])
 
-    # ---------------------------------
-    # STEP 4: Add AI voice
-    # ---------------------------------
 
-    if os.path.exists(output):
-        os.remove(output)
-
-    print("Adding AI voice...", flush=True)
-
-    run_ffmpeg([
+    run([
         "ffmpeg",
         "-y",
-
-        "-i", "merged.mp4",
-        "-i", "voice.mp3",
-
-        "-map", "0:v:0",
-        "-map", "1:a:0",
-
-        "-c:v", "copy",
-
-        "-c:a", "aac",
-        "-b:a", "128k",
-
+        "-i","merged.mp4",
+        "-i","voice.mp3",
+        "-map","0:v",
+        "-map","1:a",
         "-shortest",
-
-        "-movflags", "+faststart",
-
-        output
+        "-c:v","copy",
+        "-c:a","aac",
+        "final.mp4"
     ])
 
-    # ---------------------------------
-    # STEP 5: Verify
-    # ---------------------------------
-
-    if not os.path.exists(output):
-        raise Exception("final.mp4 was not created")
-
-    size = os.path.getsize(output)
-
-    print(
-        f"✅ Professional Video Created: "
-        f"{size / (1024 * 1024):.2f} MB",
-        flush=True
-    )
+    print("Final video created")
