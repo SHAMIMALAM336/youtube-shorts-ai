@@ -3,25 +3,37 @@ import edge_tts
 
 VOICE = "en-US-AndrewNeural"
 
+
 async def generate(text):
-    print("Starting Edge TTS...")
 
     communicate = edge_tts.Communicate(
         text=text,
         voice=VOICE
     )
 
-    await asyncio.wait_for(
-        communicate.save("voice.mp3"),
-        timeout=60
-    )
-
-    print("Voice saved.")
+    await communicate.save("voice.mp3")
 
 
 def create_voice(text):
-    print("Generating AI Voice...")
 
-    asyncio.run(generate(text))
+    print("Generating Professional AI Voice...")
 
-    print("✅ voice.mp3 generated")
+    last_error = None
+
+    for attempt in range(3):
+
+        try:
+
+            asyncio.run(generate(text))
+
+            print("✅ voice.mp3 generated")
+
+            return
+
+        except Exception as e:
+
+            last_error = e
+
+            print(f"Retry {attempt+1}/3 failed")
+
+    raise last_error
