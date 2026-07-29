@@ -1,36 +1,144 @@
 import requests
 import os
 import re
+import random
 
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
-SEARCH_KEYWORDS = [
+# ==========================================
+# AI VISUAL MAPPING
+# ==========================================
+
+AI_MAP = {
+
+    "google": [
+        "google office",
+        "google technology",
+        "software developer"
+    ],
+
+    "gemini": [
+        "artificial intelligence",
+        "ai technology",
+        "robot"
+    ],
+
+    "openai": [
+        "artificial intelligence",
+        "computer",
+        "server room"
+    ],
+
+    "chatgpt": [
+        "artificial intelligence",
+        "typing computer",
+        "office computer"
+    ],
+
+    "nvidia": [
+        "gpu",
+        "data center",
+        "computer server"
+    ],
+
+    "tesla": [
+        "electric car",
+        "factory",
+        "automation"
+    ],
+
+    "robot": [
+        "robot",
+        "artificial intelligence"
+    ],
+
+    "coding": [
+        "software developer",
+        "programming",
+        "computer"
+    ],
+
+    "developer": [
+        "software developer",
+        "coding"
+    ],
+
+    "cloud": [
+        "cloud computing",
+        "data center"
+    ],
+
+    "server": [
+        "data center",
+        "server room"
+    ],
+
+    "startup": [
+        "startup office",
+        "business meeting"
+    ],
+
+    "business": [
+        "office work",
+        "business team"
+    ],
+
+    "future": [
+        "future technology",
+        "innovation"
+    ]
+}
+
+# ==========================================
+# FALLBACK SEARCHES
+# ==========================================
+
+DEFAULT_SEARCHES = [
+
     "artificial intelligence",
-    "ai technology",
-    "robot",
-    "computer",
-    "software",
-    "coding",
+
     "technology",
-    "startup",
-    "business",
-    "future"
+
+    "software developer",
+
+    "computer",
+
+    "robot",
+
+    "data center",
+
+    "coding",
+
+    "future technology"
 ]
 
 STOP_WORDS = {
-    "this","that","with","have","will","they","them","their","from",
-    "into","your","about","after","before","there","would","could",
-    "should","just","than","then","what","when","where","which",
-    "because","while","every","today","yesterday","tomorrow","video",
-    "shorts","follow","subscribe","comment","share","watch"
+
+    "this","that","with","have","will","they","them",
+    "their","from","into","your","about","after",
+    "before","there","would","could","should","just",
+    "than","then","what","when","where","which",
+    "because","while","every","today","tomorrow",
+    "video","shorts","follow","subscribe","comment",
+    "share","watch","works","launched","launch",
+    "using","daily","background","manage","life",
+    "hours","called","built","running","instead",
+    "takes","toward","below"
+
 }
 
+# ==========================================
+# CREATE SEARCH LIST
+# ==========================================
 
 def clean_keywords(script):
 
-    words = re.findall(r"[A-Za-z]+", script.lower())
+    words = re.findall(
+        r"[A-Za-z]+",
+        script.lower()
+    )
 
-    keywords = []
+    searches = []
 
     for word in words:
 
@@ -40,19 +148,27 @@ def clean_keywords(script):
         if word in STOP_WORDS:
             continue
 
-        if word not in keywords:
-            keywords.append(word)
+        if word in AI_MAP:
 
-    keywords.extend(SEARCH_KEYWORDS)
+            for item in AI_MAP[word]:
 
-    unique = []
+                if item not in searches:
+                    searches.append(item)
 
-    for k in keywords:
-        if k not in unique:
-            unique.append(k)
+        else:
 
-    return unique[:8]
+            if word not in searches:
+                searches.append(word)
 
+    for item in DEFAULT_SEARCHES:
+
+        if item not in searches:
+            searches.append(item)
+
+    return searches[:15]
+# ==========================================
+# BEST VIDEO
+# ==========================================
 
 def best_video(video):
 
@@ -72,46 +188,63 @@ def best_video(video):
     return files[0]["link"]
 
 
+# ==========================================
+# DOWNLOAD PEXELS
+# ==========================================
+
 def download_pexels(script):
 
     os.makedirs("clips", exist_ok=True)
 
     for f in os.listdir("clips"):
-        os.remove(os.path.join("clips", f))
+
+        os.remove(
+            os.path.join("clips", f)
+        )
 
     headers = {
+
         "Authorization": PEXELS_API_KEY
+
     }
 
-    keywords = clean_keywords(script)
+    searches = clean_keywords(script)
 
-    print("=" * 40)
-    print("SEARCH KEYWORDS")
-    print("=" * 40)
+    print("=" * 50)
+    print("SEARCH TERMS")
+    print("=" * 50)
 
-    for k in keywords:
-        print(k)
-
-    clip = 1
+    for s in searches:
+        print("•", s)
 
     downloaded = set()
 
-    for keyword in keywords:
+    clip = 1
+
+    for keyword in searches:
 
         try:
 
-            print(f"\nSearching: {keyword}")
+            print(f"\nSearching : {keyword}")
 
             r = requests.get(
+
                 "https://api.pexels.com/videos/search",
+
                 headers=headers,
+
                 params={
+
                     "query": keyword,
-                    "per_page": 8,
-                    "orientation": "portrait",
-                    "size": "medium"
+
+                    "per_page": 15,
+
+                    "orientation": "portrait"
+
                 },
+
                 timeout=20
+
             )
 
             data = r.json()
@@ -123,46 +256,80 @@ def download_pexels(script):
                 continue
 
             videos = sorted(
+
                 data["videos"],
-                key=lambda v: v.get("duration", 999)
+
+                key=lambda v: abs(
+                    v.get("duration", 8) - 6
+                )
+
             )
 
             selected = None
 
+            random.shuffle(videos)
+
             for video in videos:
 
-                url = best_video(video)
+                try:
 
-                if url not in downloaded:
-                    downloaded.add(url)
-                    selected = url
-                    break
+                    url = best_video(video)
+
+                except Exception:
+
+                    continue
+
+                if url in downloaded:
+                    continue
+
+                downloaded.add(url)
+
+                selected = url
+
+                break
 
             if selected is None:
                 continue
 
-            print("Downloading clip...")
+            print("Downloading...")
 
-            video = requests.get(
+            response = requests.get(
+
                 selected,
+
                 timeout=60
+
             )
 
-            with open(f"clips/clip{clip}.mp4", "wb") as f:
-                f.write(video.content)
+            with open(
 
-            print(f"Downloaded clip{clip}")
+                f"clips/clip{clip}.mp4",
+
+                "wb"
+
+            ) as f:
+
+                f.write(response.content)
+
+            print(f"Saved clip{clip}.mp4")
 
             clip += 1
+
+            if clip > 8:
+                break
 
         except Exception as e:
 
             print("Skipped:", keyword)
-            print(str(e))
+
+            print(e)
 
     if clip == 1:
-        raise Exception("No clips downloaded")
 
-    print("=" * 40)
+        raise Exception(
+            "No clips downloaded."
+        )
+
+    print("=" * 50)
     print(f"Downloaded {clip-1} clips")
-    print("=" * 40)
+    print("=" * 50)
